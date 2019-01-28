@@ -10,9 +10,10 @@ namespace BBCollisionEditor
 {
     class OverlaidImage
     {
-        const int MARGIN = 200;
+        int MARGIN = 200;
         const string HIP_HEADER = "HIP";
         const string JONBIN_HEADER = "JONB";
+        bool is_gg = false;
         uint height;
         uint width;
         uint pxoffsetx;
@@ -29,12 +30,17 @@ namespace BBCollisionEditor
         public Bitmap boxbitmap;
         Color HURT_COLOR = Color.FromArgb(100, 0, 0, 255);
         Color HIT_COLOR = Color.FromArgb(100, 255, 0, 0);
+        public OverlaidImage(string colpacpath, int coloffset)
+        {
+            is_gg = true;
+            parseJONB(colpacpath, coloffset);
+            renderBoxes();
+        }
         public OverlaidImage(string impacpath, int imoffset, string colpacpath, int coloffset)
         {
             parseHIP(impacpath, imoffset);
             parseJONB(colpacpath, coloffset);
             renderBoxes();
-
         }
         private void parseHIP(string imgpacpath, int offset)
         {
@@ -98,7 +104,11 @@ namespace BBCollisionEditor
         {
             BinaryReader jonbr = new BinaryReader(new FileStream(colpacpath, FileMode.Open));
             jonbr.BaseStream.Seek((long)coloffset, SeekOrigin.Begin);
-            if(!jonbr.ReadChars(4).SequenceEqual(JONBIN_HEADER.ToCharArray()))
+            if (is_gg)
+            {
+                jonbr.BaseStream.Seek(0x38, SeekOrigin.Current);
+            }
+            if (!jonbr.ReadChars(4).SequenceEqual(JONBIN_HEADER.ToCharArray()))
             {
                 Console.WriteLine("NOT A JONBIN FILE");
                 return;
@@ -158,31 +168,41 @@ namespace BBCollisionEditor
         }
         public void renderBoxes()
         {
-            boxbitmap = new Bitmap(marginbitmap.Width + MARGIN*2, marginbitmap.Height + MARGIN*2);
+            if (is_gg)
+            {
+                boxbitmap = new Bitmap(1224, 1224);
+                MARGIN = 0;
+            }
+            else
+            {
+                boxbitmap = new Bitmap((int)texwidth + MARGIN, (int)texheight + MARGIN);
+            }
             Pen boxpen = new Pen(HURT_COLOR);
             boxpen.Width = 2;
-            int choffsetx = MARGIN -((int)chunks[0].DestX + (int)pxoffsetx);
-            int choffsety = MARGIN -((int)chunks[0].DestY + (int)pxoffsety);
+            int choffsetx = -(int)chunks[0].DestX;
+            int choffsety = -(int)chunks[0].DestY;
             using (Graphics g = Graphics.FromImage(boxbitmap))
             {
-                g.DrawImage(marginbitmap, MARGIN, MARGIN);
-                foreach (var box in hurtboxes)
+                if (!is_gg)
                 {
-                    float tempx = box.x + choffsetx;
-                    float tempy = box.y + choffsety;
-                    g.DrawRectangle(boxpen, tempx, tempy, box.width, box.height);
+                    g.DrawImage(marginbitmap, pxoffsetx + MARGIN, pxoffsety + MARGIN);
                 }
-                boxpen.Color = HIT_COLOR;
-                foreach (var box in hitboxes)
-                {
-                    float tempx = box.x + choffsetx;
-                    float tempy = box.y + choffsety;
-                    g.DrawRectangle(boxpen, tempx, tempy, box.width, box.height);
+                    foreach (var box in hurtboxes)
+                    {
+                        float tempx = box.x + choffsetx + MARGIN;
+                        float tempy = box.y + choffsety + MARGIN;
+                        g.DrawRectangle(boxpen, tempx, tempy, box.width, box.height);
+                    }
+                    boxpen.Color = HIT_COLOR;
+                    foreach (var box in hitboxes)
+                    {
+                        float tempx = box.x + choffsetx + MARGIN;
+                        float tempy = box.y + choffsety + MARGIN;
+                        g.DrawRectangle(boxpen, tempx, tempy, box.width, box.height);
+                    }
                 }
-                boxpen.Dispose();
             }
         }
-    }
 
         public class JonbinBox
         {

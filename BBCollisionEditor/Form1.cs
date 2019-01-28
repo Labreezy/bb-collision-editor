@@ -15,6 +15,7 @@ namespace BBCollisionEditor
         PACFile img;
         PACFile col;
         OverlaidImage oi;
+        bool is_gg;
         List<PACFile.PACEntry> spritelist = new List<PACFile.PACEntry>();
         List<PACFile.PACEntry> collisionlist = new List<PACFile.PACEntry>();
         public Form1()
@@ -28,25 +29,41 @@ namespace BBCollisionEditor
             {
                 ofd.InitialDirectory = Application.StartupPath;
                 ofd.RestoreDirectory = true;
-                ofd.Filter = "Image PAC files (*_img.pac)|*_img.pac";
-                ofd.Title = "Open Image PAC";
+                ofd.Filter = "Image PAC files (*_img.pac)|*_img.pac|Guilty Gear Collission Files (COL_*)|COL_*";
+                ofd.Title = "Open Image/GG Collision PAC";
                 bool imgsuccess = false;
                 if(ofd.ShowDialog() == DialogResult.OK)
                 {
-                    imgsuccess = true;
-                    img = new PACFile(ofd.FileName);
+                    if (ofd.FileName.Contains("COL_"))
+                    {
+                        col = new PACFile(ofd.FileName);
+                        is_gg = true;
+                    }
+                    else
+                    {
+                        imgsuccess = true;
+                        img = new PACFile(ofd.FileName);
+                    }
                 }
                 if (imgsuccess)
                 {
                     ofd.Filter = "Collision PAC files (*_col.pac)|*_col.pac";
                     ofd.Title = "Open Collision PAC";
-                    if(ofd.ShowDialog() == DialogResult.OK)
+                    if (ofd.ShowDialog() == DialogResult.OK)
                     {
                         col = new PACFile(ofd.FileName);
                     }
+                } else if (is_gg)
+                {
+                    spriteList.Items.Clear();
+                    boxList.Items.Clear();
+                    foreach(var entry in col.pacentries)
+                    {
+                        spriteList.Items.Add(entry);
+                    }
                 }
             }
-            if(col != null && img != null)
+            if(col != null && img != null && !is_gg)
             {
                 spriteList.Items.Clear();
                 boxList.Items.Clear();
@@ -65,19 +82,29 @@ namespace BBCollisionEditor
         {
             PACFile.PACEntry colentry = (PACFile.PACEntry)spriteList.Items[spriteList.SelectedIndex];
             var coloffset = col.getOffsetByName(colentry.name);
-            var spritename = colentry.name.Substring(0, colentry.name.Length - 7) + ".hip";
-            var spriteoffset = img.getOffsetByName(spritename);
-            oi = new OverlaidImage(img.path, spriteoffset, col.path, coloffset);
-            boxList.Items.Clear();
-            foreach (var box in oi.hurtboxes)
+            if (!is_gg)
             {
-                boxList.Items.Add(box);
+                var spritename = colentry.name.Substring(0, colentry.name.Length - 7) + ".hip";
+                var spriteoffset = img.getOffsetByName(spritename);
+                oi = new OverlaidImage(img.path, spriteoffset, col.path, coloffset);
             }
-            foreach (var box in oi.hitboxes)
+            else
             {
-                boxList.Items.Add(box);
+                oi = new OverlaidImage(col.path, coloffset);
             }
-            boxList.SelectedIndex = 0;
+                boxList.Items.Clear();
+                foreach (var box in oi.hurtboxes)
+                {
+                    boxList.Items.Add(box);
+                }
+                foreach (var box in oi.hitboxes)
+                {
+                    boxList.Items.Add(box);
+                }
+                if (boxList.Items.Count != 0)
+                {
+                    boxList.SelectedIndex = 0;
+                }
             spriteBox.Image = oi.boxbitmap;
         }
 
@@ -149,16 +176,17 @@ namespace BBCollisionEditor
         private void saveCurrentBtn_Click(object sender, EventArgs e)
         {
             SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = ".pac files (*.pac)|*.pac";
-            sfd.Title = "Save edited collision pac";
+            sfd.Filter = ".pac files (*.pac)|*.pac|Guilty gear COL files (COL_*)|COL_*";
+            sfd.Title = "Save edited collision file";
             sfd.OverwritePrompt = true;
             sfd.ShowDialog();
-            if (sfd.FileName != "")
+            if (sfd.FileName != "" && !is_gg)
             {
                 PACFile.PACEntry colentry = (PACFile.PACEntry)spriteList.Items[spriteList.SelectedIndex];
                 int writestart = (int)(colentry.offset + col.data_start);
                 int writeend = writestart;
                 byte[] oldpac = File.ReadAllBytes(col.path);
+                
                 writeend += 4;
                 writeend += 2 + BitConverter.ToInt16(oldpac, writeend) * 0x20 + 3;
                 var chunkssize = BitConverter.ToInt32(oldpac, writeend) * 0x50;
@@ -182,6 +210,34 @@ namespace BBCollisionEditor
                 }
                 File.WriteAllBytes(sfd.FileName, oldpac);
                 
+            } else if (sfd.FileName != "")
+            {
+                PACFile.PACEntry colentry = (PACFile.PACEntry)spriteList.Items[spriteList.SelectedIndex];
+                int writestart = (int)(colentry.offset + col.data_start);
+                int writeend = writestart;
+                byte[] oldpac = File.ReadAllBytes(col.path);
+                writeend += 0x3C;
+                writeend += 2 + BitConverter.ToInt16(oldpac, writeend) * 0x20 + 3;
+                var chunkssize = BitConverter.ToInt32(oldpac, writeend) * 0x50;
+                writeend += 8 + 41 * 2 + chunkssize;
+                int boxcount = boxList.Items.Count;
+                byte[] currfloat = { 0, 0, 0, 0 };
+                for (var i = 0; i < boxcount; i++)
+                {
+                    writeend += 4;
+                    var currbox = (JonbinBox)boxList.Items[i];
+                    currfloat = System.BitConverter.GetBytes(currbox.x);
+                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                    writeend += 4;
+                    currfloat = System.BitConverter.GetBytes(currbox.y);
+                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                    writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.width);
+                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                    writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.height);
+                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                    writeend += 4;
+                }
+                File.WriteAllBytes(sfd.FileName, oldpac);
             }
             
 
