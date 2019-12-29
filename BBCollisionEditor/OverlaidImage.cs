@@ -10,10 +10,11 @@ namespace BBCollisionEditor
 {
     class OverlaidImage
     {
-        int MARGIN = 200;
+        int MARGIN = 0;
         const string HIP_HEADER = "HIP";
         const string JONBIN_HEADER = "JONB";
         bool is_gg = false;
+        bool is_uni = false;
         uint height;
         uint width;
         uint pxoffsetx;
@@ -63,7 +64,7 @@ namespace BBCollisionEditor
             hipbr.BaseStream.Seek(0x14, SeekOrigin.Current);
             ColorPalette pal = hipsprite.Palette;
             Color[] colors = pal.Entries;
-            colors[0] = Color.Transparent;
+            colors[0] = Color.Black;
             for (var i = 1; i < 0x100; i++)
             {
                 byte[] bgracolor = hipbr.ReadBytes(4);
@@ -151,6 +152,15 @@ namespace BBCollisionEditor
                 hurt.x = jonbr.ReadSingle();
                 hurt.y = jonbr.ReadSingle();
                 hurt.width = jonbr.ReadSingle();
+                if (is_uni)
+                {
+                    hurt.width *= -1;
+                }
+                if (hurt.width < 0 && !is_uni)
+                {
+                    hurt.width *= -1;
+                    is_uni = true;
+                }
                 hurt.height = jonbr.ReadSingle();
                 hurtboxes.Add(hurt);
             }
@@ -161,6 +171,15 @@ namespace BBCollisionEditor
                 hit.x = jonbr.ReadSingle();
                 hit.y = jonbr.ReadSingle();
                 hit.width = jonbr.ReadSingle();
+                if (is_uni)
+                {
+                    hit.width *= -1;
+                }
+                if (hit.width < 0 && !is_uni)
+                {
+                    hit.width *= -1;
+                    is_uni = true;
+                }
                 hit.height = jonbr.ReadSingle();
                 hitboxes.Add(hit);
             }
@@ -183,7 +202,13 @@ namespace BBCollisionEditor
             int choffsety = -(int)chunks[0].DestY;
             using (Graphics g = Graphics.FromImage(boxbitmap))
             {
-                if (!is_gg)
+                if (is_uni)
+                {
+                    marginbitmap.RotateFlip(RotateFlipType.RotateNoneFlipX);
+                    g.DrawImage(marginbitmap, pxoffsetx + MARGIN, pxoffsety + MARGIN);
+                    g.ScaleTransform(-1, 1);
+                }
+                else if (!is_gg)
                 {
                     g.DrawImage(marginbitmap, pxoffsetx + MARGIN, pxoffsety + MARGIN);
                 }

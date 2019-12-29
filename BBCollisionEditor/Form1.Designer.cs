@@ -45,33 +45,37 @@
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             ((System.ComponentModel.ISupportInitialize)(this.spriteBox)).BeginInit();
             this.groupBox1.SuspendLayout();
+            this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // spriteBox
             // 
-            this.spriteBox.BackColor = System.Drawing.Color.White;
+            this.spriteBox.BackColor = System.Drawing.Color.Black;
             this.spriteBox.Dock = System.Windows.Forms.DockStyle.Fill;
             this.spriteBox.Location = new System.Drawing.Point(3, 16);
             this.spriteBox.Name = "spriteBox";
             this.spriteBox.Size = new System.Drawing.Size(845, 556);
             this.spriteBox.TabIndex = 0;
             this.spriteBox.TabStop = false;
+            this.spriteBox.MouseDown += new System.Windows.Forms.MouseEventHandler(this.spriteBox_MouseDown);
+            this.spriteBox.MouseMove += new System.Windows.Forms.MouseEventHandler(this.spriteBox_MouseMove);
+            this.spriteBox.MouseUp += new System.Windows.Forms.MouseEventHandler(this.spriteBox_MouseUp);
             // 
             // spriteList
             // 
             this.spriteList.FormattingEnabled = true;
             this.spriteList.Location = new System.Drawing.Point(12, 71);
             this.spriteList.Name = "spriteList";
-            this.spriteList.Size = new System.Drawing.Size(120, 186);
+            this.spriteList.Size = new System.Drawing.Size(163, 186);
             this.spriteList.TabIndex = 1;
             this.spriteList.SelectedIndexChanged += new System.EventHandler(this.spriteList_SelectedIndexChanged);
             // 
             // boxList
             // 
             this.boxList.FormattingEnabled = true;
-            this.boxList.Location = new System.Drawing.Point(12, 263);
+            this.boxList.Location = new System.Drawing.Point(15, 263);
             this.boxList.Name = "boxList";
-            this.boxList.Size = new System.Drawing.Size(120, 134);
+            this.boxList.Size = new System.Drawing.Size(163, 134);
             this.boxList.TabIndex = 2;
             this.boxList.SelectedIndexChanged += new System.EventHandler(this.boxList_SelectedIndexChanged);
             // 
@@ -87,11 +91,11 @@
             // 
             // saveCurrentBtn
             // 
-            this.saveCurrentBtn.Location = new System.Drawing.Point(12, 42);
+            this.saveCurrentBtn.Location = new System.Drawing.Point(38, 42);
             this.saveCurrentBtn.Name = "saveCurrentBtn";
-            this.saveCurrentBtn.Size = new System.Drawing.Size(120, 23);
+            this.saveCurrentBtn.Size = new System.Drawing.Size(75, 23);
             this.saveCurrentBtn.TabIndex = 5;
-            this.saveCurrentBtn.Text = "Save Current";
+            this.saveCurrentBtn.Text = "Save";
             this.saveCurrentBtn.UseVisualStyleBackColor = true;
             this.saveCurrentBtn.Click += new System.EventHandler(this.saveCurrentBtn_Click);
             // 
@@ -177,6 +181,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.boxList);
             this.groupBox2.Dock = System.Windows.Forms.DockStyle.Left;
             this.groupBox2.Location = new System.Drawing.Point(0, 0);
             this.groupBox2.Name = "groupBox2";
@@ -199,7 +204,6 @@
             this.Controls.Add(this.textBoxX);
             this.Controls.Add(this.saveCurrentBtn);
             this.Controls.Add(this.button1);
-            this.Controls.Add(this.boxList);
             this.Controls.Add(this.spriteList);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.groupBox2);
@@ -207,6 +211,7 @@
             this.Text = "BBCF Collision Editor";
             ((System.ComponentModel.ISupportInitialize)(this.spriteBox)).EndInit();
             this.groupBox1.ResumeLayout(false);
+            this.groupBox2.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 

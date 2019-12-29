@@ -77,12 +77,24 @@ namespace BBCollisionEditor
             }
             return null;
         }
-        public class PACEntry
+        public class PACEntry : IComparable<PACEntry>
         {
             public uint offset;
             public string name;
             public uint size;
             public override string ToString() => name;
+
+            int IComparable<PACEntry>.CompareTo(PACEntry other)
+            {
+                if (other != null)
+                {
+                    return this.offset.CompareTo(other.offset);
+                }
+                else
+                {
+                    throw new ArgumentException("Object is not a PACEntry");
+                }
+            }
         }
     }
 }

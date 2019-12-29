@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Input;
 using System.IO;
 namespace BBCollisionEditor
 {
@@ -18,6 +19,14 @@ namespace BBCollisionEditor
         bool is_gg;
         List<PACFile.PACEntry> spritelist = new List<PACFile.PACEntry>();
         List<PACFile.PACEntry> collisionlist = new List<PACFile.PACEntry>();
+        List<PACFile.PACEntry> editedBoxes = new List<PACFile.PACEntry>();
+        private int xPos;
+        private int yPos;
+        private int xLastMoved = 0;
+        private int yLastMoved = 0;
+        private bool Dragging = false;
+        private int oldListIndex = -1;
+
         public Form1()
         {
             InitializeComponent();
@@ -82,6 +91,14 @@ namespace BBCollisionEditor
         {
             PACFile.PACEntry colentry = (PACFile.PACEntry)spriteList.Items[spriteList.SelectedIndex];
             var coloffset = col.getOffsetByName(colentry.name);
+            if (oldListIndex > 0)
+            {
+                var oldEntry = (PACFile.PACEntry)spriteList.Items[oldListIndex];
+                int idx = editedBoxes.BinarySearch(oldEntry);
+                if (idx < 0) idx = ~idx;
+                editedBoxes.Insert(idx, oldEntry);
+            }
+            oldListIndex = spriteList.SelectedIndex;
             if (!is_gg)
             {
                 var spritename = colentry.name.Substring(0, colentry.name.Length - 7) + ".hip";
@@ -105,6 +122,8 @@ namespace BBCollisionEditor
                 {
                     boxList.SelectedIndex = 0;
                 }
+            xLastMoved = 0;
+            yLastMoved = 0;
             spriteBox.Image = oi.boxbitmap;
         }
 
@@ -167,11 +186,13 @@ namespace BBCollisionEditor
             float newH;
             if (float.TryParse(textBoxH.Text, out newH))
             {
-                currbox.y = newH;
+                currbox.height = newH;
                 oi.renderBoxes();
                 spriteBox.Image = oi.boxbitmap;
             }
         }
+
+
 
         private void saveCurrentBtn_Click(object sender, EventArgs e)
         {
@@ -183,30 +204,35 @@ namespace BBCollisionEditor
             if (sfd.FileName != "" && !is_gg)
             {
                 PACFile.PACEntry colentry = (PACFile.PACEntry)spriteList.Items[spriteList.SelectedIndex];
-                int writestart = (int)(colentry.offset + col.data_start);
-                int writeend = writestart;
+                int idx = editedBoxes.BinarySearch(colentry);
+                if (idx < 0) idx = ~idx;
+                editedBoxes.Insert(idx, colentry);
                 byte[] oldpac = File.ReadAllBytes(col.path);
-                
-                writeend += 4;
-                writeend += 2 + BitConverter.ToInt16(oldpac, writeend) * 0x20 + 3;
-                var chunkssize = BitConverter.ToInt32(oldpac, writeend) * 0x50;
-                writeend += 8 + 41 * 2 + chunkssize;
-                int boxcount = boxList.Items.Count;
-                byte[] currfloat = { 0, 0, 0, 0 };
-                for (var i = 0; i < boxcount; i++)
+                foreach (var jb in editedBoxes)
                 {
+                    int writestart = (int)(jb.offset + col.data_start);
+                    int writeend = writestart;
                     writeend += 4;
-                    var currbox = (JonbinBox)boxList.Items[i];
-                    currfloat = System.BitConverter.GetBytes(currbox.x);
-                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
-                    writeend += 4;
-                    currfloat = System.BitConverter.GetBytes(currbox.y);
-                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
-                    writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.width);
-                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
-                    writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.height);
-                    Array.Copy(currfloat, 0, oldpac, writeend, 4);
-                    writeend += 4;
+                    writeend += 2 + BitConverter.ToInt16(oldpac, writeend) * 0x20 + 3;
+                    var chunkssize = BitConverter.ToInt32(oldpac, writeend) * 0x50;
+                    writeend += 8 + 41 * 2 + chunkssize;
+                    int boxcount = boxList.Items.Count;
+                    byte[] currfloat = { 0, 0, 0, 0 };
+                    for (var i = 0; i < boxcount; i++)
+                    {
+                        writeend += 4;
+                        var currbox = (JonbinBox)boxList.Items[i];
+                        currfloat = System.BitConverter.GetBytes(currbox.x);
+                        Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                        writeend += 4;
+                        currfloat = System.BitConverter.GetBytes(currbox.y);
+                        Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                        writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.width);
+                        Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                        writeend += 4; currfloat = System.BitConverter.GetBytes(currbox.height);
+                        Array.Copy(currfloat, 0, oldpac, writeend, 4);
+                        writeend += 4;
+                    }
                 }
                 File.WriteAllBytes(sfd.FileName, oldpac);
                 
@@ -243,6 +269,39 @@ namespace BBCollisionEditor
 
             
 
+        }
+
+        private void spriteBox_MouseMove(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            Control c = sender as Control;
+            if(spriteBox.DisplayRectangle.Contains(e.X, e.Y) && Dragging)
+            {
+                Graphics graphics = spriteBox.CreateGraphics();
+                graphics.Clear(Color.Black);
+                graphics.DrawImage(spriteBox.Image, e.X - xPos + xLastMoved, e.Y - yPos + yLastMoved);
+
+            }
+
+        }
+
+        private void spriteBox_MouseDown(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            Control c = sender as Control;
+            if (e.Button == MouseButtons.Left && c.DisplayRectangle.Contains(e.X, e.Y))
+            {
+                Dragging = true;
+                xPos = e.X;
+                yPos = e.Y;
+            }
+
+        }
+
+        private void spriteBox_MouseUp(object sender, System.Windows.Forms.MouseEventArgs e)
+        {
+            Dragging = false;
+            xLastMoved = e.X - xPos;
+            yLastMoved = e.Y - yPos;
+            
         }
     }
 }
